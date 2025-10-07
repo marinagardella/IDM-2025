@@ -158,7 +158,6 @@ elif st.session_state.step == "results":
             ]
             append_to_gsheet(sheet, data)
             st.session_state.results_saved = True
-            st.success("✅ Resultados enviados correctamente a la hoja de cálculo.")
         except Exception as e:
             st.error(f"No se pudieron guardar los resultados: {e}")
 
@@ -176,7 +175,7 @@ elif st.session_state.step == "results":
             df_leader["puntaje"] = pd.to_numeric(df_leader["puntaje"], errors="coerce")
             df_leader["puntaje_display"] = df_leader["puntaje"].astype(str) + "/" + df_leader["total"]
             df_leader = df_leader.sort_values(by="puntaje", ascending=False).head(20)
-            st.table(df_leader[["nombre", "edad", "puntaje_display", "fecha"]])
+            st.table(df_leader[["nombre", "edad", "puntaje", "fecha"]])
     except Exception as e:
         st.error(f"No se pudo cargar el leaderboard: {e}")
 
