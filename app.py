@@ -48,13 +48,12 @@ def load_images():
                          for f in os.listdir(os.path.join(IMAGES_FOLDER, "midjourney"))
                          if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
 
-    # Mezclar y elegir aleatoriamente
     real_sample = random.sample(real_images, N_REAL)
     fake_pool = firefly_images + midjourney_images
     fake_sample = random.sample(fake_pool, N_FAKE)
 
     all_images = [{"path": p, "label": "real"} for p in real_sample] + \
-                 [{"path": p, "label": "fake" if "firefly" in p else "fake"} for p in fake_sample]
+                 [{"path": p, "label": "fake"} for p in fake_sample]
     random.shuffle(all_images)
     return all_images
 
@@ -79,14 +78,17 @@ if st.session_state.step == "start":
     age = st.number_input("Edad:", min_value=1, max_value=120, step=1)
     consent = st.checkbox("Acepto que los resultados de este test sean utilizados para actividades académicas.")
 
-    if st.button("Comenzar") and name.strip() and consent:
-        st.session_state.name = name
-        st.session_state.age = age
-        st.session_state.images = load_images()
-        st.session_state.step = "quiz"
-        st.rerun()
-    elif st.button("Comenzar") and not consent:
-        st.warning("Debes aceptar el uso de datos para continuar.")
+    if st.button("Comenzar"):
+        if not name.strip() or not age:
+            st.warning("Por favor completa tu nombre y edad.")
+        elif not consent:
+            st.warning("Debes aceptar el uso académico de los resultados para continuar.")
+        else:
+            st.session_state.name = name
+            st.session_state.age = age
+            st.session_state.images = load_images()
+            st.session_state.step = "quiz"
+            st.rerun()
 
 # -----------------------------
 # QUIZ
@@ -125,9 +127,7 @@ elif st.session_state.step == "quiz":
 elif st.session_state.step == "results":
     df = pd.DataFrame(st.session_state.responses)
 
-    # Etiquetas verdaderas: solo las reales son "true"
     df["true_is_true"] = df["true_label"].apply(lambda x: x == "real")
-
     df["correct"] = df.apply(lambda row: (
         (row["true_is_true"] and row["user_answer"] == "true") or
         (not row["true_is_true"] and row["user_answer"] == "false")
@@ -142,9 +142,7 @@ elif st.session_state.step == "results":
 
     st.bar_chart(df["correct"].value_counts())
 
-    # Desempeño por tipo de imagen
-    df["type"] = df["true_label"]
-    type_scores = df.groupby("type")["correct"].mean().to_dict()
+    type_scores = df.groupby("true_label")["correct"].mean().to_dict()
     st.subheader("Desempeño por tipo de imagen:")
     for k, v in type_scores.items():
         st.write(f"**{k.capitalize()}**: {v*100:.1f}%")
@@ -153,7 +151,6 @@ elif st.session_state.step == "results":
     try:
         sheet = connect_to_gsheet()
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
         data = [
             timestamp,
             st.session_state.name,
