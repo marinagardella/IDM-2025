@@ -154,7 +154,7 @@ elif st.session_state.step == "results":
             total
         ]
         append_to_gsheet(sheet, data)
-        st.success("✅ Resultados enviados correctamente a la hoja de cálculo.")
+        #st.success("✅ Resultados enviados correctamente a la hoja de cálculo.")
     except Exception as e:
         st.error(f"No se pudieron guardar los resultados: {e}")
 
