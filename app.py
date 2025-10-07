@@ -69,6 +69,8 @@ if "responses" not in st.session_state:
     st.session_state.responses = []
 if "index" not in st.session_state:
     st.session_state.index = 0
+if "results_saved" not in st.session_state:
+    st.session_state.results_saved = False
 
 # -----------------------------
 # PANTALLA INICIAL
@@ -125,7 +127,7 @@ elif st.session_state.step == "quiz":
         st.rerun()
 
 # -----------------------------
-# RESULTADOS + LEADERBOARD EN LA MISMA PANTALLA
+# RESULTADOS + LEADERBOARD
 # -----------------------------
 elif st.session_state.step == "results":
     df = pd.DataFrame(st.session_state.responses)
@@ -142,21 +144,23 @@ elif st.session_state.step == "results":
     st.title("🎉 Resultados del Test")
     st.write(f"**Tu puntaje:** {score}/{total}")
 
-    # Guardar en Google Sheets
-    try:
-        sheet = connect_to_gsheet()
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        data = [
-            timestamp,
-            st.session_state.name,
-            st.session_state.age,
-            score,
-            total
-        ]
-        append_to_gsheet(sheet, data)
-        #st.success("✅ Resultados enviados correctamente a la hoja de cálculo.")
-    except Exception as e:
-        st.error(f"No se pudieron guardar los resultados: {e}")
+    # Guardar en Google Sheets solo una vez
+    if not st.session_state.results_saved:
+        try:
+            sheet = connect_to_gsheet()
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            data = [
+                timestamp,
+                st.session_state.name,
+                st.session_state.age,
+                score,
+                total
+            ]
+            append_to_gsheet(sheet, data)
+            st.session_state.results_saved = True
+            st.success("✅ Resultados enviados correctamente a la hoja de cálculo.")
+        except Exception as e:
+            st.error(f"No se pudieron guardar los resultados: {e}")
 
     # -----------------------------
     # LEADERBOARD
@@ -169,7 +173,7 @@ elif st.session_state.step == "results":
             st.warning("La hoja está vacía.")
         else:
             df_leader = pd.DataFrame(data[1:], columns=data[0])
-            df_leader["puntaje"] = df_leader["puntaje"].astype(int)
+            df_leader["puntaje"] = pd.to_numeric(df_leader["puntaje"], errors="coerce")
             df_leader["puntaje_display"] = df_leader["puntaje"].astype(str) + "/" + df_leader["total"]
             df_leader = df_leader.sort_values(by="puntaje", ascending=False).head(20)
             st.table(df_leader[["nombre", "edad", "puntaje_display", "fecha"]])
@@ -177,7 +181,7 @@ elif st.session_state.step == "results":
         st.error(f"No se pudo cargar el leaderboard: {e}")
 
     if st.button("Volver al inicio"):
-        for key in ["step", "responses", "index", "images", "name", "age"]:
+        for key in ["step", "responses", "index", "images", "name", "age", "results_saved"]:
             if key in st.session_state:
                 del st.session_state[key]
         st.rerun()
