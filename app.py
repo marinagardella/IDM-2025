@@ -125,7 +125,7 @@ elif st.session_state.step == "quiz":
         st.rerun()
 
 # -----------------------------
-# RESULTADOS
+# RESULTADOS + LEADERBOARD EN LA MISMA PANTALLA
 # -----------------------------
 elif st.session_state.step == "results":
     df = pd.DataFrame(st.session_state.responses)
@@ -138,17 +138,9 @@ elif st.session_state.step == "results":
 
     score = int(df["correct"].sum())
     total = len(df)
-    percent = round(score / total * 100, 1)
 
     st.title("🎉 Resultados del Test")
-    st.write(f"**Puntaje total:** {score} / {total} ({percent}%)")
-
-    st.bar_chart(df["correct"].value_counts())
-
-    type_scores = df.groupby("true_label")["correct"].mean().to_dict()
-    st.subheader("Desempeño por tipo de imagen:")
-    for k, v in type_scores.items():
-        st.write(f"**{k.capitalize()}**: {v*100:.1f}%")
+    st.write(f"**Tu puntaje:** {score}/{total}")
 
     # Guardar en Google Sheets
     try:
@@ -159,34 +151,28 @@ elif st.session_state.step == "results":
             st.session_state.name,
             st.session_state.age,
             score,
-            total,
-            percent,
-            type_scores.get("real", 0),
-            type_scores.get("firefly", 0),
-            type_scores.get("midjourney", 0)
+            total
         ]
         append_to_gsheet(sheet, data)
         st.success("✅ Resultados enviados correctamente a la hoja de cálculo.")
     except Exception as e:
         st.error(f"No se pudieron guardar los resultados: {e}")
 
-    if st.button("Ver leaderboard"):
-        st.session_state.step = "leaderboard"
-        st.rerun()
-
-# -----------------------------
-# LEADERBOARD
-# -----------------------------
-elif st.session_state.step == "leaderboard":
-    st.title("🏆 Leaderboard")
-
+    # -----------------------------
+    # LEADERBOARD
+    # -----------------------------
+    st.subheader("🏆 Leaderboard")
     try:
         sheet = connect_to_gsheet()
         data = sheet.get_all_values()
-        df = pd.DataFrame(data[1:], columns=data[0])
-        df["puntaje"] = df["puntaje"].astype(float)
-        df = df.sort_values(by="puntaje", ascending=False).head(20)
-        st.dataframe(df)
+        if not data:
+            st.warning("La hoja está vacía.")
+        else:
+            df_leader = pd.DataFrame(data[1:], columns=data[0])
+            df_leader["puntaje"] = df_leader["puntaje"].astype(int)
+            df_leader["puntaje_display"] = df_leader["puntaje"].astype(str) + "/" + df_leader["total"]
+            df_leader = df_leader.sort_values(by="puntaje", ascending=False).head(20)
+            st.table(df_leader[["nombre", "edad", "puntaje_display", "fecha"]])
     except Exception as e:
         st.error(f"No se pudo cargar el leaderboard: {e}")
 
